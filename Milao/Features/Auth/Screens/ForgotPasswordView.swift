@@ -41,22 +41,22 @@ struct ForgotPasswordView: View {
 
             ScrollView {
                 VStack(spacing: 0) {
-                    // Header row: back + progress dots
+                    // Header row: back button only
                     headerRow
                         .padding(.top, 20)
                         .padding(.horizontal, Theme.Spacing.lg)
-                        .padding(.bottom, 32)
+                        .padding(.bottom, 28)
+
+                    Spacer(minLength: 0)
 
                     // Animated step content
                     stepContent
                         .padding(.horizontal, Theme.Spacing.lg)
                         .animation(.easeInOut(duration: 0.3), value: currentStep)
 
-                    // Back to sign in
-                    backToSignInLink
-                        .padding(.top, 28)
-                        .padding(.bottom, 40)
+                    Spacer(minLength: 40)
                 }
+                .frame(minHeight: UIScreen.main.bounds.height * 0.75)
             }
             .scrollBounceBehavior(.basedOnSize)
             .scrollIndicators(.hidden)
@@ -77,48 +77,11 @@ struct ForgotPasswordView: View {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
-                    .modernGlassButton(tint: .white.opacity(0.14), cornerRadius: 18)
+                    .frame(width: 40, height: 40)
+                    .background(Color.white.opacity(0.12), in: Circle())
             }
 
             Spacer()
-
-            // Progress dots
-            HStack(spacing: 8) {
-                ForEach(0..<3) { step in
-                    progressDot(for: step)
-                }
-            }
-
-            Spacer()
-
-            // Balance spacer
-            Color.clear.frame(width: 36, height: 36)
-        }
-    }
-
-    @ViewBuilder
-    private func progressDot(for step: Int) -> some View {
-        if step < currentStep {
-            // Completed — green filled circle
-            Circle()
-                .fill(Color(hex: "00C48C"))
-                .frame(width: 10, height: 10)
-                .overlay(
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 6, weight: .bold))
-                        .foregroundStyle(.white)
-                )
-        } else if step == currentStep {
-            // Active — gold wide pill
-            Capsule()
-                .fill(Theme.Colors.primary)
-                .frame(width: 28, height: 10)
-        } else {
-            // Inactive — gray dot
-            Circle()
-                .fill(Color.white.opacity(0.3))
-                .frame(width: 10, height: 10)
         }
     }
 
@@ -198,7 +161,9 @@ struct ForgotPasswordView: View {
             .opacity(email.contains("@") ? 1.0 : 0.5)
         }
         .padding(Theme.Spacing.xl)
-        .modernGlassPanel(cornerRadius: 28)
+        .background(Color(hex: "0D1830").opacity(0.88), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(.white.opacity(0.16), lineWidth: 1))
+        .shadow(color: .black.opacity(0.4), radius: 24, x: 0, y: 14)
     }
 
     // MARK: - Step 1: OTP
@@ -260,7 +225,9 @@ struct ForgotPasswordView: View {
             .disabled(resendCooldown > 0)
         }
         .padding(Theme.Spacing.xl)
-        .modernGlassPanel(cornerRadius: 28)
+        .background(Color(hex: "0D1830").opacity(0.88), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(.white.opacity(0.16), lineWidth: 1))
+        .shadow(color: .black.opacity(0.4), radius: 24, x: 0, y: 14)
     }
 
     // MARK: - Step 2: New Password
@@ -330,24 +297,11 @@ struct ForgotPasswordView: View {
             .opacity(newPassword.count >= 8 && newPassword == confirmPassword ? 1.0 : 0.5)
         }
         .padding(Theme.Spacing.xl)
-        .modernGlassPanel(cornerRadius: 28)
+        .background(Color(hex: "0D1830").opacity(0.88), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(.white.opacity(0.16), lineWidth: 1))
+        .shadow(color: .black.opacity(0.4), radius: 24, x: 0, y: 14)
     }
 
-    // MARK: - Back to Sign In
-
-    private var backToSignInLink: some View {
-        Button {
-            dismiss()
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 12, weight: .semibold))
-                Text("Back to Sign In")
-                    .font(.inter(.semibold, size: 15))
-            }
-            .foregroundStyle(.white.opacity(0.75))
-        }
-    }
 
     // MARK: - Helpers
 

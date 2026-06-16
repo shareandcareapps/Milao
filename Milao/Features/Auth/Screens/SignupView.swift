@@ -64,10 +64,6 @@ struct SignupView: View {
                     // Glass form card
                     formCard
                         .padding(.horizontal, Theme.Spacing.lg)
-
-                    // Sign in link
-                    signInLink
-                        .padding(.top, 24)
                         .padding(.bottom, 40)
                 }
             }
@@ -252,24 +248,9 @@ struct SignupView: View {
             .opacity(isValid ? 1.0 : 0.5)
         }
         .padding(Theme.Spacing.xl)
-        .modernGlassPanel(cornerRadius: 28)
-    }
-
-    // MARK: - Sign In Link
-
-    private var signInLink: some View {
-        Button {
-            dismiss()
-        } label: {
-            HStack(spacing: 4) {
-                Text("Already have an account?")
-                    .foregroundStyle(.white.opacity(0.6))
-                Text("Sign in")
-                    .foregroundStyle(Theme.Colors.primary)
-                    .fontWeight(.semibold)
-            }
-            .font(.inter(.regular, size: 15))
-        }
+        .background(Color(hex: "0D1830").opacity(0.88), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(.white.opacity(0.16), lineWidth: 1))
+        .shadow(color: .black.opacity(0.4), radius: 24, x: 0, y: 14)
     }
 }
 

@@ -26,14 +26,14 @@ struct GlassTextField: View {
 
             Group {
                 if isSecure && !isRevealed {
-                    SecureField(placeholder, text: $text)
+                    SecureField("", text: $text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.55)))
                 } else {
-                    TextField(placeholder, text: $text)
+                    TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.55)))
                         .keyboardType(keyboardType)
                 }
             }
             .font(.inter(.regular, size: 16))
-            .foregroundStyle(colorScheme == .dark ? .white : .primary)
+            .foregroundStyle(.white)
             .focused($isFocused)
             .if(textContentType != nil) { $0.textContentType(textContentType!) }
 
@@ -52,12 +52,11 @@ struct GlassTextField: View {
         }
         .padding(.horizontal, Theme.Spacing.base)
         .padding(.vertical, Theme.Spacing.md)
-        .background(.white.opacity(isFocused ? 0.12 : 0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(Color.white.opacity(isFocused ? 0.14 : 0.10), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder((isFocused ? Theme.Colors.primary : .white).opacity(isFocused ? 0.40 : 0.16), lineWidth: 1)
+                .strokeBorder((isFocused ? Theme.Colors.primary : .white).opacity(isFocused ? 0.55 : 0.22), lineWidth: 1.5)
         )
-        .glassEffect(.regular.tint(.white.opacity(0.05)).interactive(), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .animation(.easeInOut(duration: 0.18), value: isFocused)
     }
 }

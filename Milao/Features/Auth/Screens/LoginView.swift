@@ -163,7 +163,7 @@ struct LoginView: View {
                     .transition(.opacity)
             }
 
-            PrimaryButton(canSignIn ? "Sign In" : "Enter email and password", isLoading: auth.isLoading) {
+            PrimaryButton(canSignIn ? "Log in" : "Enter email and password", isLoading: auth.isLoading) {
                 Task { await auth.signIn(email: email, password: password) }
             }
             .frame(height: scale.primaryButtonHeight)
@@ -181,10 +181,6 @@ struct LoginView: View {
             HStack(spacing: scale.socialSpacing) {
                 socialButton(title: "Google", icon: "globe", scale: scale) {
                     Task { await auth.signInWithGoogle() }
-                }
-
-                socialButton(title: "Guest", icon: "person.crop.circle", scale: scale) {
-                    auth.continueAsGuest()
                 }
             }
         }
@@ -222,7 +218,7 @@ struct LoginView: View {
                 HStack(spacing: 5) {
                     Text("New here?")
                         .foregroundStyle(.white.opacity(0.62))
-                    Text("Create an account")
+                    Text("Join the Community")
                         .foregroundStyle(Theme.Colors.saffron)
                         .fontWeight(.bold)
                 }
@@ -242,23 +238,23 @@ struct LoginView: View {
 private struct LoginScale {
     let compact: Bool
 
-    var topSpacer: CGFloat { compact ? 8 : 24 }
-    var bottomSpacer: CGFloat { compact ? 6 : 16 }
-    var outerSpacing: CGFloat { compact ? 10 : 18 }
+    var topSpacer: CGFloat { compact ? 8 : 32 }
+    var bottomSpacer: CGFloat { compact ? 6 : 20 }
+    var outerSpacing: CGFloat { compact ? 10 : 24 }
     var horizontalPadding: CGFloat { compact ? 18 : 24 }
-    var logoSpacing: CGFloat { compact ? 5 : 8 }
-    var logoSize: CGFloat { compact ? 56 : 78 }
-    var logoCorner: CGFloat { compact ? 18 : 24 }
-    var logoIconSize: CGFloat { compact ? 22 : 30 }
-    var logoTitleSize: CGFloat { compact ? 34 : 45 }
+    var logoSpacing: CGFloat { compact ? 6 : 12 }
+    var logoSize: CGFloat { compact ? 60 : 84 }
+    var logoCorner: CGFloat { compact ? 20 : 26 }
+    var logoIconSize: CGFloat { compact ? 24 : 32 }
+    var logoTitleSize: CGFloat { compact ? 34 : 46 }
     var taglineSize: CGFloat { compact ? 9 : 12 }
-    var cardSpacing: CGFloat { compact ? 11 : 16 }
-    var cardPadding: CGFloat { compact ? 18 : 24 }
+    var cardSpacing: CGFloat { compact ? 12 : 20 }
+    var cardPadding: CGFloat { compact ? 18 : 28 }
     var cardCorner: CGFloat { compact ? 28 : 34 }
     var cardTitleSize: CGFloat { compact ? 27 : 34 }
     var subtitleSize: CGFloat { compact ? 14 : 17 }
-    var fieldSpacing: CGFloat { compact ? 9 : 14 }
-    var fieldHeight: CGFloat { compact ? 50 : 60 }
+    var fieldSpacing: CGFloat { compact ? 10 : 16 }
+    var fieldHeight: CGFloat { compact ? 52 : 62 }
     var linkSize: CGFloat { compact ? 14 : 17 }
     var linkHeight: CGFloat { compact ? 26 : 32 }
     var primaryButtonHeight: CGFloat { compact ? 52 : 62 }
@@ -295,9 +291,9 @@ private struct LoginInputField: View {
 
             Group {
                 if isSecure {
-                    SecureField(placeholder, text: $text)
+                    SecureField("", text: $text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.55)))
                 } else {
-                    TextField(placeholder, text: $text)
+                    TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(.white.opacity(0.55)))
                         .keyboardType(keyboardType)
                 }
             }
