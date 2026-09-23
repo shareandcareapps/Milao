@@ -131,6 +131,8 @@ struct InitialsAvatar: View {
     let name: String
     let color: Color
     var size: CGFloat = 42
+    /// When set to a valid image URL, shows the photo instead of initials.
+    var imageURL: String? = nil
 
     private var initials: String {
         let parts = name.split(separator: " ")
@@ -139,7 +141,7 @@ struct InitialsAvatar: View {
         return (first + last).uppercased()
     }
 
-    var body: some View {
+    private var initialsCircle: some View {
         Circle()
             .fill(
                 LinearGradient(
@@ -154,7 +156,25 @@ struct InitialsAvatar: View {
                     .font(.inter(.bold, size: size * 0.32))
                     .foregroundStyle(.white)
             }
-            .overlay(Circle().strokeBorder(.white.opacity(0.28), lineWidth: 1))
-            .shadow(color: color.opacity(0.25), radius: 12, x: 0, y: 7)
+    }
+
+    var body: some View {
+        Group {
+            if let imageURL, let url = URL(string: imageURL) {
+                AsyncImage(url: url) { phase in
+                    if let image = phase.image {
+                        image.resizable().scaledToFill()
+                    } else {
+                        initialsCircle
+                    }
+                }
+                .frame(width: size, height: size)
+                .clipShape(Circle())
+            } else {
+                initialsCircle
+            }
+        }
+        .overlay(Circle().strokeBorder(.white.opacity(0.28), lineWidth: 1))
+        .shadow(color: color.opacity(0.25), radius: 12, x: 0, y: 7)
     }
 }

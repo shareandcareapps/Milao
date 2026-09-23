@@ -34,48 +34,56 @@ extension Color {
     }
 }
 
-// MARK: - NestApp / Milao Design System
+// MARK: - Milao Design System
 
 enum Theme {
     enum Colors {
-        static let primary = Color(hex: "#E8185C")
+        // Brand
+        static let primary   = Color(hex: "#DC143C")
         static let secondary = Color(hex: "#3D5AFE")
-        static let accent = Color(hex: "#FF6B6B")
-        static let saffron = Color(hex: "#F4A833")
+        static let accent    = Color(hex: "#FF6B6B")
+        static let saffron   = Color(hex: "#F4A833")
 
-        static let background = Color(lightHex: "#F2F2F7", darkHex: "#0A0A1A")
-        static let surface = Color(lightHex: "#FFFFFF", darkHex: "#14142A")
-        static let card = Color(lightHex: "#FFFFFF", darkHex: "#1C1C3A")
-        static let inputBackground = Color(lightHex: "#F2F2F7", darkHex: "#14142A")
+        // Surfaces — updated to match Figma
+        static let background      = Color(lightHex: "#F2F2F2", darkHex: "#282828")
+        static let surface         = Color(lightHex: "#FFFFFF",  darkHex: "#1A1A1A")
+        static let card            = Color(lightHex: "#FFFFFF",  darkHex: "#282828")
+        static let inputBackground = Color(lightHex: "#F2F2F2",  darkHex: "#1A1A1A")
 
-        static let textPrimary = Color(lightHex: "#0A0A1A", darkHex: "#F5F5FF")
-        static let textSecondary = Color(lightHex: "#3C3C54", darkHex: "#B0B0CC")
-        static let textLight = Color(lightHex: "#8E8E9A", darkHex: "#6A6A8A")
-        static let textMuted = Color(lightHex: "#AEAEB8", darkHex: "#4A4A6A")
+        // Text — updated to Figma spec
+        static let textPrimary   = Color(lightHex: "#100D0D", darkHex: "#E4E4E4")
+        static let textSecondary = Color(lightHex: "#5C5C66", darkHex: "#909090")
+        static let textLight     = Color(lightHex: "#8E8E9A", darkHex: "#6A6A8A")
+        static let textMuted     = Color(lightHex: "#AEAEB8", darkHex: "#4A4A6A")
 
-        static let border = Color(lightHex: "#E8E8EE", darkHex: "#2A2A4A")
+        // Structure
+        static let border  = Color(lightHex: "#E8E8EE", darkHex: "#2A2A3A")
         static let success = Color(hex: "#34C759")
         static let warning = Color(hex: "#FF9500")
-        static let error = Color(hex: "#FF3B30")
-        static let info = Color(hex: "#007AFF")
+        static let error   = Color(hex: "#FF3B30")
+        static let info    = Color(hex: "#007AFF")
 
-        static let tabActive = Color(hex: "#E8185C")
+        // Tab bar
+        static let tabActive   = Color(hex: "#DC143C")
         static let tabInactive = Color(lightHex: "#6B6B74", darkHex: "#FFFFFF").opacity(0.58)
 
-        static let homeAccent = Color(hex: "#F4A833")
-        static let marketAccent = Color(hex: "#FF9500")
-        static let carpoolAccent = Color(hex: "#2EAD7A")
-        static let newsAccent = Color(hex: "#3AA8E0")
+        // Section accents
+        static let homeAccent     = Color(hex: "#F4A833")
+        static let marketAccent   = Color(hex: "#FF9500")
+        static let carpoolAccent  = Color(hex: "#2EAD7A")
+        static let newsAccent     = Color(hex: "#3AA8E0")
         static let messagesAccent = Color(hex: "#7C5CFC")
 
-        static let headerGradientLight = [Color(hex: "#87CEEB"), Color(hex: "#C5E8FA"), Color(hex: "#F0F8FF")]
-        static let headerGradientDark = [Color(hex: "#0A1628"), Color(hex: "#0F1F3D"), Color(hex: "#0A0A1A")]
-        static let primaryGradient = [Color(hex: "#E8185C"), Color(hex: "#FF6B8A")]
-        static let secondaryGradient = [Color(hex: "#3D5AFE"), Color(hex: "#6B8AFF")]
-        static let rideGradient = [Color(hex: "#3D5AFE"), Color(hex: "#1E3AD4")]
-        static let successGradient = [Color(hex: "#34C759"), Color(hex: "#30B855")]
+        // Gradients — updated to exact Figma values
+        static let headerGradientLight = [Color(hex: "#40C8F8"), Color.white]
+        static let headerGradientDark  = [Color(hex: "#2C2C2C"), Color(hex: "#161616")]
+        static let primaryGradient     = [Color(hex: "#DC143C"), Color(hex: "#A50E2D")]
+        static let secondaryGradient   = [Color(hex: "#3D5AFE"), Color(hex: "#6B8AFF")]
+        static let rideGradient        = [Color(hex: "#0C1CFF"), Color(hex: "#5B87FF")]
+        static let pointsGradient      = [Color(hex: "#DC143C"), Color(hex: "#F94D49")]
+        static let successGradient     = [Color(hex: "#34C759"), Color(hex: "#30B855")]
         static let shadow = Color.black.opacity(0.12)
-        static let white = Color.white
+        static let white  = Color.white
     }
 
     enum Fonts {
@@ -105,7 +113,7 @@ enum Theme {
         static let xs: CGFloat = 4
         static let sm: CGFloat = 8
         static let md: CGFloat = 14
-        static let card: CGFloat = 20
+        static let card: CGFloat = 15
         static let lg: CGFloat = 20
         static let xl: CGFloat = 28
         static let xxl: CGFloat = 36
@@ -122,8 +130,8 @@ struct AppBackground: View {
     var body: some View {
         LinearGradient(
             colors: colorScheme == .dark ? Theme.Colors.headerGradientDark : Theme.Colors.headerGradientLight,
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
+            startPoint: .top,
+            endPoint: .bottom
         )
         .ignoresSafeArea()
     }
@@ -169,6 +177,10 @@ extension Font {
 
     static func inter(_ weight: Weight = .regular, size: CGFloat) -> Font {
         .custom(interPostScript(for: weight), size: size)
+    }
+
+    static func mouldyCheese(size: CGFloat) -> Font {
+        .custom("MouldyCheese-Regular", size: size)
     }
 
     static func playfairDisplay(_ weight: Weight = .regular, size: CGFloat) -> Font {

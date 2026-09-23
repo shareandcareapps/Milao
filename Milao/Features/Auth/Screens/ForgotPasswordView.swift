@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Forgot Password View (3-step flow)
 
@@ -8,7 +9,7 @@ struct ForgotPasswordView: View {
 
     @State private var currentStep: Int = 0
     @State private var email = ""
-    @State private var otpDigits: [String] = Array(repeating: "", count: 6)
+    @State private var otpCode = ""
     @State private var newPassword = ""
     @State private var confirmPassword = ""
     @State private var resendCooldown: Int = 0
@@ -29,15 +30,15 @@ struct ForgotPasswordView: View {
         ZStack {
             // Same gradient as LoginView
             LinearGradient(
-                colors: [Color(hex: "0A1628"), Color(hex: "1A3A6C"), Color(hex: "3D5AFE")],
+                colors: [Color(hex: "0A1628"), Color(hex: "1A3A6C"), Theme.Colors.secondary],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
             // Two orbs
-            ResetOrb(size: 280, color: Color(hex: "F4A833"), opacity: 0.12, blur: 85, offset: CGSize(width: 140, height: -180))
-            ResetOrb(size: 220, color: Color(hex: "FF6B6B"), opacity: 0.10, blur: 75, offset: CGSize(width: -100, height: 280))
+            ResetOrb(size: 280, color: Theme.Colors.saffron, opacity: 0.12, blur: 85, offset: CGSize(width: 140, height: -180))
+            ResetOrb(size: 220, color: Theme.Colors.accent, opacity: 0.10, blur: 75, offset: CGSize(width: -100, height: 280))
 
             ScrollView {
                 VStack(spacing: 0) {
@@ -47,7 +48,13 @@ struct ForgotPasswordView: View {
                         .padding(.horizontal, Theme.Spacing.lg)
                         .padding(.bottom, 28)
 
-                    Spacer(minLength: 0)
+                    HStack(alignment: .firstTextBaseline, spacing: 0) {
+                        Text("Mila").foregroundStyle(.white)
+                        Text("o").foregroundStyle(Theme.Colors.primary)
+                    }
+                    .font(.mouldyCheese(size: 40))
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.bottom, 24)
 
                     // Animated step content
                     stepContent
@@ -56,11 +63,23 @@ struct ForgotPasswordView: View {
 
                     Spacer(minLength: 40)
                 }
-                .frame(minHeight: UIScreen.main.bounds.height * 0.75)
+                .frame(minHeight: (UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first?.screen.bounds.height ?? 700) * 0.75)
             }
             .scrollBounceBehavior(.basedOnSize)
             .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { hideKeyboard() }
+                        .font(.inter(.semibold, size: 15))
+                }
+            }
         }
+    }
+
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
     // MARK: - Header Row
@@ -78,7 +97,7 @@ struct ForgotPasswordView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 40, height: 40)
-                    .background(Color.white.opacity(0.12), in: Circle())
+                    .modernGlassButton(tint: .white.opacity(0.14), cornerRadius: 20)
             }
 
             Spacer()
@@ -199,18 +218,25 @@ struct ForgotPasswordView: View {
             }
             .multilineTextAlignment(.center)
 
-            // OTP input boxes
-            HStack(spacing: 8) {
-                ForEach(0..<6, id: \.self) { index in
-                    OTPDigitBox(text: $otpDigits[index])
-                }
+            // OTP input — one hidden field, six display boxes (auto-advance + paste support)
+            OTPCodeField(code: $otpCode)
+
+            if let msg = auth.errorMessage {
+                Text(msg)
+                    .font(.inter(.regular, size: 13))
+                    .foregroundStyle(Theme.Colors.accent)
+                    .multilineTextAlignment(.center)
             }
 
-            PrimaryButton("Verify Code") {
-                withAnimation(.easeInOut(duration: 0.3)) { currentStep = 2 }
+            PrimaryButton("Verify Code", isLoading: auth.isLoading) {
+                Task {
+                    if await auth.verifyRecoveryCode(email: email, code: otpCode) {
+                        withAnimation(.easeInOut(duration: 0.3)) { currentStep = 2 }
+                    }
+                }
             }
-            .disabled(otpDigits.joined().count < 6)
-            .opacity(otpDigits.joined().count == 6 ? 1.0 : 0.5)
+            .disabled(otpCode.count < 6 || auth.isLoading)
+            .opacity(otpCode.count == 6 ? 1.0 : 0.5)
 
             Button {
                 if resendCooldown == 0 {
@@ -282,6 +308,13 @@ struct ForgotPasswordView: View {
 
             if newPassword != confirmPassword && !confirmPassword.isEmpty {
                 Text("Passwords don't match")
+                    .font(.inter(.regular, size: 14))
+                    .foregroundStyle(Theme.Colors.error)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if let msg = auth.errorMessage {
+                Text(msg)
                     .font(.inter(.regular, size: 13))
                     .foregroundStyle(Theme.Colors.accent)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -289,8 +322,10 @@ struct ForgotPasswordView: View {
 
             PrimaryButton("Reset Password", isLoading: auth.isLoading) {
                 Task {
-                    // Supabase reset via OTP is wired in Phase 2.
-                    dismiss()
+                    // Sets the new password and logs the user in via the recovery session.
+                    if await auth.updatePassword(newPassword) {
+                        dismiss()
+                    }
                 }
             }
             .disabled(newPassword.count < 8 || newPassword != confirmPassword || auth.isLoading)
@@ -321,32 +356,50 @@ struct ForgotPasswordView: View {
     }
 }
 
-// MARK: - OTP Digit Box
+// MARK: - OTP Code Field
+// One invisible TextField holds the whole code; six boxes render it.
+// Typing auto-advances, backspace works naturally, and pasting a code fills all boxes.
 
-private struct OTPDigitBox: View {
-    @Binding var text: String
+private struct OTPCodeField: View {
+    @Binding var code: String
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        TextField("", text: $text)
-            .font(.nunito(.bold, size: 22))
-            .foregroundStyle(.white)
-            .multilineTextAlignment(.center)
-            .keyboardType(.numberPad)
-            .textContentType(.oneTimeCode)
-            .frame(width: 44, height: 52)
-            .background(Color.white.opacity(isFocused ? 0.18 : 0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(isFocused ? Theme.Colors.primary.opacity(0.55) : Color.white.opacity(0.20), lineWidth: 1.5)
-            )
-            .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .focused($isFocused)
-            .onChange(of: text) { _, newValue in
-                if newValue.count > 1 {
-                    text = String(newValue.prefix(1))
+        ZStack {
+            TextField("", text: $code)
+                .keyboardType(.numberPad)
+                .textContentType(.oneTimeCode)
+                .focused($isFocused)
+                .foregroundStyle(.clear)
+                .tint(.clear)
+                .frame(width: 1, height: 1)
+                .opacity(0.02)
+                .onChange(of: code) { _, newValue in
+                    let digits = newValue.filter(\.isNumber)
+                    code = String(digits.prefix(6))
+                }
+
+            HStack(spacing: 8) {
+                ForEach(0..<6, id: \.self) { index in
+                    let digit: String = index < code.count
+                        ? String(Array(code)[index])
+                        : ""
+                    let isActive = isFocused && index == min(code.count, 5)
+                    Text(digit)
+                        .font(.nunito(.bold, size: 22))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 52)
+                        .background(Color.white.opacity(isActive ? 0.18 : 0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .strokeBorder(isActive ? Theme.Colors.primary.opacity(0.55) : Color.white.opacity(0.20), lineWidth: 1.5)
+                        )
                 }
             }
+            .contentShape(Rectangle())
+            .onTapGesture { isFocused = true }
+        }
+        .onAppear { isFocused = true }
     }
 }
 

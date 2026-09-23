@@ -2,5 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!--
+	Sign In with Apple is on hold: it requires a paid Apple Developer Program
+	membership, and this project is currently signed with a personal/free team,
+	which Apple does not allow to use this capability. Declaring the
+	com.apple.developer.applesignin entitlement here (even with the button
+	hidden) makes automatic signing try to provision it and fails the build.
+	Re-add the entitlement key once signed in with an enrolled team — see
+	`appleSignInEnabled` in LoginView.swift, which hides the button until then.
+	-->
 </dict>
 </plist>

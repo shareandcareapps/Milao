@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Signup View
 
@@ -8,12 +9,13 @@ struct SignupView: View {
 
     @State private var fullName = ""
     @State private var email = ""
-    @State private var phone = ""        // collected but not yet wired
-    @State private var zipCode = ""      // collected but not yet wired
+    @State private var phone = ""
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var showAgeGate = false
     @State private var ageGateCleared = false
+    @State private var showLocationGate = false
+    @State private var locationCleared = false
 
     private var passwordStrength: PasswordStrength {
         if password.count < 6 { return .weak }
@@ -69,20 +71,43 @@ struct SignupView: View {
             }
             .scrollBounceBehavior(.basedOnSize)
             .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { hideKeyboard() }
+                        .font(.inter(.semibold, size: 15))
+                }
+            }
         }
         .sheet(isPresented: $showAgeGate) {
             AgeGateView(
                 onConfirmed: {
                     ageGateCleared = true
                     showAgeGate = false
-                    // TODO: pass phone/zip via metadata in Phase 2
-                    Task { await auth.signUp(email: email, password: password, fullName: fullName) }
+                    showLocationGate = true
                 },
                 onDenied: {
                     showAgeGate = false
                 }
             )
         }
+        .sheet(isPresented: $showLocationGate) {
+            LocationGateView(
+                onAllowed: {
+                    locationCleared = true
+                    showLocationGate = false
+                    Task { await auth.signUp(email: email, password: password, fullName: fullName, phone: phone) }
+                },
+                onCancelled: {
+                    showLocationGate = false
+                }
+            )
+        }
+    }
+
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
     // MARK: - Top Row
@@ -175,14 +200,6 @@ struct SignupView: View {
                 textContentType: .telephoneNumber
             )
 
-            GlassTextField(
-                placeholder: "Zip Code",
-                text: $zipCode,
-                icon: "location",
-                keyboardType: .numberPad,
-                textContentType: .postalCode
-            )
-
             VStack(alignment: .leading, spacing: 6) {
                 GlassTextField(
                     placeholder: "Password (min 8 characters)",
@@ -222,6 +239,16 @@ struct SignupView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
+            // Location note — sets expectations before the location prompt appears
+            HStack(spacing: 6) {
+                Image(systemName: "location.fill")
+                    .font(.system(size: 11))
+                Text("We'll confirm you're in the St. Louis area before your account is created.")
+            }
+            .font(.inter(.regular, size: 12))
+            .foregroundStyle(.white.opacity(0.5))
+            .multilineTextAlignment(.center)
+
             // Terms note
             HStack(spacing: 4) {
                 Text("By creating an account you agree to our")
@@ -237,11 +264,12 @@ struct SignupView: View {
             .multilineTextAlignment(.center)
 
             PrimaryButton("Create Account", isLoading: auth.isLoading) {
-                if ageGateCleared {
-                    // TODO: pass phone/zip via metadata in Phase 2
-                    Task { await auth.signUp(email: email, password: password, fullName: fullName) }
-                } else {
+                if !ageGateCleared {
                     showAgeGate = true
+                } else if !locationCleared {
+                    showLocationGate = true
+                } else {
+                    Task { await auth.signUp(email: email, password: password, fullName: fullName, phone: phone) }
                 }
             }
             .disabled(!isValid || auth.isLoading)

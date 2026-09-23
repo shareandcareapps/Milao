@@ -1,6 +1,15 @@
 import SwiftUI
+import UIKit
+import AuthenticationServices
+import CryptoKit
 
 // MARK: - Login View
+
+// On hold: Sign In with Apple requires a paid Apple Developer Program membership
+// (the com.apple.developer.applesignin entitlement can't be provisioned on a
+// personal/free team). Flip this back to `true` — and re-add the entitlement in
+// Milao.entitlements — once the project is signed with an enrolled team.
+private let appleSignInEnabled = false
 
 struct LoginView: View {
     @Environment(AuthService.self) private var auth
@@ -9,6 +18,8 @@ struct LoginView: View {
     @State private var showSignup = false
     @State private var showForgotPassword = false
     @State private var revealPassword = false
+    @State private var currentNonce: String?
+    @State private var offerBiometric = false
 
     private var canSignIn: Bool {
         !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -17,12 +28,17 @@ struct LoginView: View {
     }
 
     var body: some View {
-        GeometryReader { proxy in
-            let compact = proxy.size.height < 760
-            let scale = LoginScale(compact: compact)
+        ZStack {
+            // Background lives outside the GeometryReader so it always fills the
+            // screen — if it were inside, iOS's automatic keyboard avoidance would
+            // shrink the reader's frame when the keyboard appears, exposing white
+            // space above it instead of just resizing the content within.
+            loginBackground
 
-            ZStack {
-                loginBackground
+            GeometryReader { proxy in
+                // With two social buttons the full-size layout only fits iPad-class heights
+                let compact = proxy.size.height < 1000
+                let scale = LoginScale(compact: compact)
 
                 VStack(spacing: scale.outerSpacing) {
                     Spacer(minLength: scale.topSpacer)
@@ -35,14 +51,34 @@ struct LoginView: View {
                 .frame(maxWidth: 520)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .ignoresSafeArea(.keyboard)
         }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .sheet(isPresented: $showSignup) {
             SignupView().environment(auth)
         }
         .sheet(isPresented: $showForgotPassword) {
             ForgotPasswordView().environment(auth)
         }
+        .task { await checkBiometricAutofill() }
+        .alert("Enable \(auth.biometricLabel())?", isPresented: $offerBiometric) {
+            Button("Enable") {
+                _ = auth.enableBiometricLogin(email: email, password: password)
+            }
+            Button("Not now", role: .cancel) {}
+        } message: {
+            Text("Sign in faster next time with \(auth.biometricLabel()).")
+        }
+    }
+
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+
+    // If a session already exists but the app requires re-authentication after
+    // being relaunched, this lets a returning biometric user skip the form entirely.
+    private func checkBiometricAutofill() async {
+        guard auth.biometricLoginEnabled, auth.currentUser == nil else { return }
+        _ = await auth.signInWithBiometrics()
     }
 
     private var loginBackground: some View {
@@ -66,6 +102,12 @@ struct LoginView: View {
                 .blur(radius: 90)
                 .offset(x: -160, y: 250)
         }
+        // A dedicated leaf view for the tap-to-dismiss gesture: it sits behind every
+        // control, so only taps that land on empty background actually reach it —
+        // unlike attaching the gesture to the whole screen, which would swallow taps
+        // meant for the text fields and buttons above it.
+        .contentShape(Rectangle())
+        .onTapGesture { hideKeyboard() }
     }
 
     private func logoSection(scale: LoginScale) -> some View {
@@ -87,10 +129,14 @@ struct LoginView: View {
             .overlay(RoundedRectangle(cornerRadius: scale.logoCorner, style: .continuous).strokeBorder(.white.opacity(0.32), lineWidth: 1))
             .shadow(color: Theme.Colors.saffron.opacity(0.28), radius: 18, x: 0, y: 8)
 
-            Text("Milao")
-                .font(.nunito(.black, size: scale.logoTitleSize))
-                .foregroundStyle(.white)
-                .minimumScaleFactor(0.8)
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                Text("Mila")
+                    .foregroundStyle(.white)
+                Text("o")
+                    .foregroundStyle(Theme.Colors.primary)
+            }
+            .font(.mouldyCheese(size: scale.logoTitleSize))
+            .minimumScaleFactor(0.8)
 
             Text("WHERE CULTURE MEETS COMMUNITY")
                 .font(.inter(.bold, size: scale.taglineSize))
@@ -157,29 +203,55 @@ struct LoginView: View {
             if let msg = auth.errorMessage {
                 Text(msg)
                     .font(.inter(.regular, size: 12))
-                    .foregroundStyle(Color(hex: "#FFB4B4"))
+                    .foregroundStyle(Theme.Colors.error)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .transition(.opacity)
             }
 
             PrimaryButton(canSignIn ? "Log in" : "Enter email and password", isLoading: auth.isLoading) {
-                Task { await auth.signIn(email: email, password: password) }
+                Task {
+                    await auth.signIn(email: email, password: password)
+                    if auth.currentUser != nil, auth.canOfferBiometricLogin {
+                        offerBiometric = true
+                    }
+                }
             }
             .frame(height: scale.primaryButtonHeight)
             .disabled(!canSignIn)
 
+            if auth.biometricLoginEnabled {
+                Button {
+                    Task { _ = await auth.signInWithBiometrics() }
+                } label: {
+                    Label("Sign in with \(auth.biometricLabel())", systemImage: auth.biometricSystemImage())
+                        .font(.inter(.bold, size: scale.socialFontSize))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: scale.socialHeight)
+                }
+                .glassEffect(
+                    .regular.tint(Color.white.opacity(0.08)).interactive(),
+                    in: RoundedRectangle(cornerRadius: scale.socialCorner, style: .continuous)
+                )
+                .disabled(auth.isLoading)
+                .opacity(auth.isLoading ? 0.55 : 1)
+            }
+
             HStack(spacing: 10) {
                 Rectangle().fill(.white.opacity(0.16)).frame(height: 1)
-                Text("or continue with")
+                Text("or")
                     .font(.inter(.medium, size: scale.dividerSize))
                     .foregroundStyle(.white.opacity(0.58))
                     .lineLimit(1)
                 Rectangle().fill(.white.opacity(0.16)).frame(height: 1)
             }
 
-            HStack(spacing: scale.socialSpacing) {
-                socialButton(title: "Google", icon: "globe", scale: scale) {
+            VStack(spacing: scale.socialSpacing) {
+                if appleSignInEnabled {
+                    appleButton(scale: scale)
+                }
+                socialButton(title: "Continue with Google", icon: "globe", scale: scale) {
                     Task { await auth.signInWithGoogle() }
                 }
             }
@@ -194,6 +266,60 @@ struct LoginView: View {
         .shadow(color: .black.opacity(0.34), radius: 24, x: 0, y: 16)
     }
 
+    private func appleButton(scale: LoginScale) -> some View {
+        SignInWithAppleButton(.signIn) { request in
+            let nonce = Self.randomNonceString()
+            currentNonce = nonce
+            request.requestedScopes = [.fullName, .email]
+            request.nonce = Self.sha256(nonce)
+        } onCompletion: { result in
+            guard case .success(let authorization) = result,
+                  let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                  let tokenData = credential.identityToken,
+                  let token = String(data: tokenData, encoding: .utf8),
+                  let nonce = currentNonce
+            else { return }
+            let name = [credential.fullName?.givenName, credential.fullName?.familyName]
+                .compactMap { $0 }
+                .joined(separator: " ")
+            Task {
+                await auth.signInWithApple(
+                    identityToken: token,
+                    nonce: nonce,
+                    fullName: name.isEmpty ? nil : name
+                )
+            }
+        }
+        .signInWithAppleButtonStyle(.white)
+        .frame(height: scale.socialHeight)
+        .clipShape(RoundedRectangle(cornerRadius: scale.socialCorner, style: .continuous))
+        .disabled(auth.isLoading)
+        .opacity(auth.isLoading ? 0.55 : 1)
+    }
+
+    // Nonce helpers for Sign in with Apple (prevents replay attacks)
+    private static func randomNonceString(length: Int = 32) -> String {
+        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        var result = ""
+        var remaining = length
+        while remaining > 0 {
+            var random: UInt8 = 0
+            if SecRandomCopyBytes(kSecRandomDefault, 1, &random) == errSecSuccess {
+                if random < charset.count {
+                    result.append(charset[Int(random)])
+                    remaining -= 1
+                }
+            }
+        }
+        return result
+    }
+
+    private static func sha256(_ input: String) -> String {
+        SHA256.hash(data: Data(input.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+    }
+
     private func socialButton(title: String, icon: String, scale: LoginScale, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Label(title, systemImage: icon)
@@ -201,11 +327,12 @@ struct LoginView: View {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: scale.socialHeight)
-                .background(Color(hex: "#24314B").opacity(0.92), in: RoundedRectangle(cornerRadius: scale.socialCorner, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: scale.socialCorner, style: .continuous).strokeBorder(.white.opacity(0.18), lineWidth: 1))
                 .contentShape(RoundedRectangle(cornerRadius: scale.socialCorner, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .glassEffect(
+            .regular.tint(Color.white.opacity(0.08)).interactive(),
+            in: RoundedRectangle(cornerRadius: scale.socialCorner, style: .continuous)
+        )
         .disabled(auth.isLoading)
         .opacity(auth.isLoading ? 0.55 : 1)
     }
@@ -225,6 +352,18 @@ struct LoginView: View {
                 .font(.inter(.regular, size: scale.footerFontSize))
                 .frame(height: scale.footerButtonHeight)
                 .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                auth.continueAsGuest()
+            } label: {
+                Text("Just looking? Explore the app")
+                    .font(.inter(.medium, size: scale.footerFontSize - 2))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .underline()
+                    .frame(height: scale.footerButtonHeight)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 

@@ -33,24 +33,19 @@ struct PrimaryButton: View {
                     }
                 }
             }
-            .foregroundStyle(.white.opacity(isEnabled ? 1 : 0.68))
+            .foregroundStyle(.white.opacity(isEnabled ? 1 : 0.55))
             .frame(maxWidth: .infinity)
             .frame(height: 54)
-            .background(
-                LinearGradient(
-                    colors: isEnabled
-                        ? [Theme.Colors.primary, Theme.Colors.accent]
-                        : [Color.white.opacity(0.22), Color.white.opacity(0.12)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                in: Capsule()
-            )
-            .overlay(Capsule().strokeBorder(.white.opacity(isEnabled ? 0.34 : 0.18), lineWidth: 1))
-            .shadow(color: isEnabled ? Theme.Colors.primary.opacity(0.28) : .clear, radius: 16, x: 0, y: 8)
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .glassEffect(
+            .regular
+                .tint(isEnabled
+                      ? Theme.Colors.primary.opacity(0.82)
+                      : Color.white.opacity(0.10))
+                .interactive(),
+            in: Capsule()
+        )
         .disabled(isLoading)
         .animation(.easeInOut(duration: 0.18), value: isEnabled)
         .animation(.easeInOut(duration: 0.18), value: isLoading)
@@ -75,11 +70,12 @@ struct SecondaryButton: View {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .background(.white.opacity(0.08), in: Capsule())
-                .overlay(Capsule().strokeBorder(.white.opacity(0.24), lineWidth: 1))
                 .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .glassEffect(
+            .regular.tint(.white.opacity(0.10)).interactive(),
+            in: Capsule()
+        )
     }
 }
 
